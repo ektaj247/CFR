@@ -169,7 +169,14 @@
 
   <script>
     const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzI3YCus_LPuhnzncdtevVUvAsEO87JCSy890CrVhsursgsAZ3TC2JUqn7UZN6YrgFd/exec";
-    // NATIVE APP FIX: Dynamically injects a Web App Manifest to force Chrome into standalone app mode
+    // Register Service Worker to meet Chrome's PWA install criteria
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('./sw.js')
+          .then(reg => console.log('ServiceWorker engine primed successfully:', reg.scope))
+          .catch(err => console.error('ServiceWorker setup failure:', err));
+      });
+    }
     (function() {
       const manifestObj = {
         "name": "Minimalist Expense Tracker",
