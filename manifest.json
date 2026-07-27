@@ -1,6 +1,6 @@
 {
-  "name": "Minimalist Expense Tracker",
-  "short_name": "Expenses",
+  "name": "CashFlowRecord",
+  "short_name": "CFR",
   "start_url": ".",
   "display": "standalone",
   "background_color": "#121212",
