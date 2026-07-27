@@ -1,0 +1,464 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <link rel="manifest" href="manifest.json">
+  <!-- The Native Free App Fix: Tells Android to treat this as a standalone system app -->
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  
+  <style>
+    :root {
+      --bg: #121212;
+      --surface: #1e1e1e;
+      --surface-input: #2d2d2d;
+      --text: #e0e0e0;
+      --text-dim: #a0a0a0;
+      --pink: #ff8da1;
+      --green: #81c784;
+      --orange: #ffb74d;
+      --border: #292929;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, sans-serif; }
+    body { background: var(--bg); color: var(--text); padding: 14px; padding-bottom: 20px; display: flex; flex-direction: column; min-height: 100vh;}
+    
+    /* Collapsible Entry Drawer */
+    .collapsible-drawer { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; margin-bottom: 14px; overflow: hidden; transition: max-height 0.3s cubic-bezier(0, 1, 0, 1); max-height: 52px; }
+    .collapsible-drawer.expanded { max-height: 2000px; transition: max-height 0.3s ease-in-out; }
+    
+    .drawer-header { padding: 14px 16px; display: flex; justify-content: space-between; align-items: center; cursor: pointer; background: rgba(255,255,255,0.02); }
+    .drawer-header h2 { font-size: 1rem; font-weight: 500; margin-bottom: 0; letter-spacing: 0.5px; }
+    .plus-icon { font-size: 1.4rem; font-weight: 300; transition: transform 0.2s; color: var(--text-dim); }
+    .collapsible-drawer.expanded .plus-icon { transform: rotate(45deg); color: var(--pink); }
+    
+    .drawer-content { padding: 0 16px 16px 16px; display: none; }
+    .collapsible-drawer.expanded .drawer-content { display: block; margin-top: 12px; }
+
+    /* Form Layouts */
+    .form-group { margin-bottom: 12px; position: relative; }
+    label { display: block; font-size: 0.75rem; color: var(--text-dim); margin-bottom: 4px; }
+    input, select, textarea { 
+      width: 100%; padding: 10px; background: var(--surface-input); border: 1px solid var(--border); 
+      border-radius: 8px; color: var(--text); font-size: 0.9rem; outline: none;
+    }
+    input:focus, select:focus { border-color: var(--text-dim); }
+    .row { display: flex; gap: 10px; }
+    .row .form-group { flex: 1; }
+    
+    .action-pill { background: var(--surface-input); border: 1px solid var(--border); color: var(--text-dim); padding: 4px 8px; border-radius: 6px; font-size: 0.7rem; cursor: pointer; display: inline-block; margin-top: 4px; }
+    button.submit-btn { width: 100%; padding: 12px; background: var(--text); color: var(--bg); border: none; border-radius: 8px; font-weight: 600; font-size: 0.95rem; margin-top: 8px; cursor: pointer; }
+    
+    /* Summary Panel */
+    .summary-card { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; padding: 14px; margin-bottom: 14px; }
+    .summary-meta { font-size: 0.75rem; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.5px; text-align: center; margin-bottom: 8px; font-weight: 500; }
+    .summary-grid { display: flex; gap: 12px; }
+    .stat-box { flex: 1; text-align: center; padding: 4px 0; }
+    .stat-box.out { border-right: 1px solid var(--border); }
+    .stat-val { font-size: 1.3rem; font-weight: 600; margin-top: 2px; }
+    .pink-text { color: var(--pink); }
+    .green-text { color: var(--green); }
+    .orange-text { color: var(--orange); }
+
+    /* Controls & Navigation Elements */
+    .section-title { font-size: 0.95rem; font-weight: 500; color: var(--text-dim); margin-bottom: 10px; text-transform: uppercase; letter-spacing: 0.5px; display: flex; justify-content: space-between; align-items: center; }
+    .filter-bar { display: flex; gap: 8px; margin-bottom: 12px; overflow-x: auto; white-space: nowrap; padding-bottom: 4px; }
+    .filter-chip { background: var(--surface); border: 1px solid var(--border); padding: 6px 14px; border-radius: 20px; font-size: 0.8rem; color: var(--text-dim); cursor: pointer; }
+    .filter-chip.active { background: var(--text); color: var(--bg); border-color: var(--text); }
+    
+    #customRangePicker { display: none; margin-bottom: 12px; background: var(--surface); padding: 12px; border-radius: 10px; border: 1px solid var(--border); }
+
+    /* History Viewport Workspace */
+    .history-list { display: flex; flex-direction: column; gap: 8px; flex: 1; }
+    .item { background: var(--surface); padding: 12px; border-radius: 10px; border: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; }
+    .item.pending { border-left: 3px solid var(--orange); }
+    .item-left { display: flex; flex-direction: column; gap: 2px; }
+    .item-name { font-weight: 500; font-size: 0.9rem; display: flex; align-items: center; gap: 6px; }
+    .item-sub { font-size: 0.75rem; color: var(--text-dim); }
+    .item-right { text-align: right; }
+    .item-amount { font-weight: 600; font-size: 0.95rem; }
+    
+    .recur-badge { background: rgba(255,141,161,0.15); color: var(--pink); font-size: 0.65rem; padding: 1px 4px; border-radius: 4px; font-weight: bold; }
+    .sync-status { font-size: 0.7rem; font-weight: normal; }
+  </style>
+</head>
+<body>
+
+  <!-- Aggregated Summaries Component -->
+  <div class="summary-card">
+    <div class="summary-meta" id="datePeriodRange">Loading Summary Details...</div>
+    <div class="summary-grid">
+      <div class="stat-box out"><label>Total Outflow</label><div class="stat-val pink-text" id="totalOut">$0.00</div></div>
+      <div class="stat-box in"><label>Total Inflow</label><div class="stat-val green-text" id="totalIn">$0.00</div></div>
+    </div>
+  </div>
+
+  <!-- Collapsible Form Drawer -->
+  <div class="collapsible-drawer" id="entryDrawer">
+    <div class="drawer-header" onclick="toggleDrawer()">
+      <h2>Log New Transaction</h2>
+      <div class="plus-icon" id="drawerPlus">+</div>
+    </div>
+    <div class="drawer-content">
+      <form id="expenseForm" onsubmit="submitForm(event)">
+        <div class="row">
+          <div class="form-group">
+            <label>Name</label>
+            <input type="text" id="name" required placeholder="Target, Uber, Rent..." oninput="runAutoCategorizer(this.value)">
+          </div>
+          <div class="form-group">
+            <label>Date</label><input type="date" id="date" required>
+            <span class="action-pill" onclick="setYesterday()">Yesterday</span>
+          </div>
+        </div>
+        
+        <div class="row">
+          <div class="form-group">
+            <label>Category</label>
+            <select id="category" required>
+              <option value="grocery">Grocery</option>
+              <option value="shopping">Shopping</option>
+              <option value="subscriptions">Subscriptions</option>
+              <option value="gift">Gift</option>
+              <option value="rent">Rent</option>
+              <option value="dining out">Dining Out</option>
+              <option value="travel">Travel</option>
+              <option value="miscellaneous">Miscellaneous</option>
+              <option value="income">Income</option>
+              <option value="deposit">Deposit</option>
+              <option value="cashback">Cashback</option>
+              <option value="IMP">IMP</option>
+            </select>
+          </div>
+          <div class="form-group"><label>Paid By</label><input type="text" id="paidBy" placeholder="Self"></div>
+        </div>
+
+        <div class="row">
+          <div class="form-group">
+            <label>Total</label><input type="number" step="0.01" id="totalAmount" required placeholder="0.00" oninput="calculateSplit()">
+            <span class="action-pill" onclick="toggleSplitMode()">Split 50/50</span>
+          </div>
+          <div class="form-group"><label>Owed By Me</label><input type="number" step="0.01" id="owedByMe" placeholder="0.00"></div>
+          <div class="form-group"><label>Owed By Others</label><input type="number" step="0.01" id="owedByOthers" placeholder="0.00"></div>
+        </div>
+
+        <div class="form-group"><label>Comments</label><textarea id="comments" rows="1" placeholder="Notes..."></textarea></div>
+        
+        <button type="submit" class="submit-btn" id="submitBtn">Log Transaction</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- Primary History Section Workspace -->
+  <div class="section-title">
+    <span>Transaction Records</span>
+    <span id="syncIndicator" class="sync-status green-text">● Ready</span>
+  </div>
+  
+  <div class="filter-bar">
+    <div class="filter-chip active" onclick="setFilter('all', this)">All time</div>
+    <div class="filter-chip" onclick="setFilter('thisMonth', this)">This Month</div>
+    <div class="filter-chip" onclick="setFilter('lastMonth', this)">Last Month</div>
+    <div class="filter-chip" onclick="setFilter('customRange', this)">Custom Range</div>
+  </div>
+
+  <div id="customRangePicker" class="row">
+    <div class="form-group"><label>From</label><input type="date" id="filterFrom" onchange="renderUI()"></div>
+    <div class="form-group"><label>To</label><input type="date" id="filterTo" onchange="renderUI()"></div>
+  </div>
+
+  <div class="history-list" id="historyContainer">Loading engine records...</div>
+
+  <script>
+    const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzI3YCus_LPuhnzncdtevVUvAsEO87JCSy890CrVhsursgsAZ3TC2JUqn7UZN6YrgFd/exec";
+    // NATIVE APP FIX: Dynamically injects a Web App Manifest to force Chrome into standalone app mode
+    (function() {
+      const manifestObj = {
+        "name": "Minimalist Expense Tracker",
+        "short_name": "Expenses",
+        "start_url": window.location.href,
+        "display": "standalone",
+        "background_color": "#121212",
+        "theme_color": "#121212"
+      };
+      const manifestStr = JSON.stringify(manifestObj);
+      const blob = new Blob([manifestStr], {type: 'application/json'});
+      const manifestURL = URL.createObjectURL(blob);
+      
+      const link = document.createElement('link');
+      link.rel = 'manifest';
+      link.href = manifestURL;
+      document.head.appendChild(link);
+    })();
+    
+    let serverData = [];
+    let currentFilter = 'all';
+    let isOffline = !navigator.onLine;
+    let isSplitActive = false;
+
+    // Upgraded Dictionary Map including separate Travel, Misc, and Subions categories
+    const categoryDictionary = {
+      'grocery': ['target', 'walmart', 'kroger', 'costco', 'safeway', 'aldi', 'whole', 'trader', 'market', 'groceries'],
+      'subscriptions': ['netflix', 'spotify', 'hulu', 'hbo', 'disney', 'youtube premium', 'apple', 'icloud', 'prime', 'chatgpt'],
+      'shopping': ['amazon', 'nike', 'adidas', 'zara', 'h&m', 'bestbuy', 'shein', 'temu', 'ebay'],
+      'dining out': ['mcdonald', 'starbucks', 'subway', 'burger', 'pizza', 'dunkin', 'taco', 'kfc', 'restaurant', 'cafe', 'bar', 'diner'],
+      'travel': ['uber', 'lyft', 'flight', 'airline', 'hotel', 'airbnb', 'gas', 'shell', 'chevron', 'train', 'metro', 'aviation'],
+      'rent': ['landlord', 'rent', 'apartment', 'housing'],
+      'income': ['salary', 'paycheck', 'stripe', 'employer', 'dividend']
+    };
+
+    document.getElementById('date').value = new Date().toISOString().split('T')[0];
+    window.addEventListener('online', () => updateNetworkStatus(true));
+    window.addEventListener('offline', () => updateNetworkStatus(false));
+
+    function toggleDrawer() {
+      document.getElementById('entryDrawer').classList.toggle('expanded');
+    }
+
+    function runAutoCategorizer(value) {
+      if (!value) return;
+      const cleanInput = value.toLowerCase().trim();
+      
+      for (const [category, keywords] of Object.entries(categoryDictionary)) {
+        const found = keywords.some(keyword => cleanInput.includes(keyword));
+        if (found) {
+          document.getElementById('category').value = category;
+          break;
+        }
+      }
+    }
+
+    function updateNetworkStatus(online) {
+      isOffline = !online;
+      const ind = document.getElementById('syncIndicator');
+      if (online) {
+        ind.innerText = "● Online";
+        ind.className = "sync-status green-text";
+        syncOfflineQueue();
+      } else {
+        ind.innerText = "● Cached Mode";
+        ind.className = "sync-status orange-text";
+      }
+    }
+
+    function setYesterday() {
+      const y = new Date(); y.setDate(y.getDate() - 1);
+      document.getElementById('date').value = y.toISOString().split('T')[0];
+    }
+
+    function toggleSplitMode() {
+      isSplitActive = !isSplitActive;
+      calculateSplit();
+    }
+
+    function calculateSplit() {
+      const total = parseFloat(document.getElementById('totalAmount').value) || 0;
+      if (isSplitActive && total > 0) {
+        const half = (total / 2).toFixed(2);
+        document.getElementById('owedByMe').value = half;
+        document.getElementById('owedByOthers').value = half;
+      } else if (!isSplitActive) {
+        document.getElementById('owedByMe').value = '';
+        document.getElementById('owedByOthers').value = '';
+      }
+    }
+
+    function getOfflineQueue() { return JSON.parse(localStorage.getItem('offlineExpenses') || '[]'); }
+    function saveOfflineQueue(q) { localStorage.setItem('offlineExpenses', JSON.stringify(q)); }
+
+    function loadData() {
+      updateNetworkStatus(navigator.onLine);
+      const cached = localStorage.getItem('serverDataCache');
+      if (cached) { serverData = JSON.parse(cached); renderUI(); }
+      
+      if (!isOffline) {
+        fetch(SCRIPT_URL)
+          .then(res => res.json())
+          .then(data => {
+            serverData = data;
+            localStorage.setItem('serverDataCache', JSON.stringify(data));
+            renderUI();
+          })
+          .catch(err => console.error("Fetch error:", err));
+      }
+    }
+    
+    function sendItemToServer(item) {
+      fetch(SCRIPT_URL, {
+        method: 'POST',
+        mode: 'no-cors', // Essential bypass rule for handling direct Apps Script redirects
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(item)
+      })
+      .then(() => {
+        let queue = getOfflineQueue();
+        queue = queue.filter(q => q.id !== item.id);
+        saveOfflineQueue(queue);
+        // Give Google Sheets 1.5 seconds to settle the row operation before drawing updates
+        setTimeout(loadData, 1500); 
+      })
+      .catch(err => console.error("Server sync error:", err));
+    }
+
+    function setFilter(filterType, el) {
+      document.querySelectorAll('.filter-chip').forEach(c => c.classList.remove('active'));
+      el.classList.add('active');
+      currentFilter = filterType;
+      document.getElementById('customRangePicker').style.display = (filterType === 'customRange') ? 'flex' : 'none';
+      renderUI();
+    }
+
+    function renderUI() {
+      const container = document.getElementById('historyContainer');
+      container.innerHTML = '';
+      let outSum = 0; let inSum = 0;
+      const now = new Date();
+      
+      const unSyncedItems = getOfflineQueue();
+      const workingDataset = [...unSyncedItems, ...serverData];
+
+      let labelString = "All Historical Data";
+      if (currentFilter === 'thisMonth') {
+        labelString = now.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+      } else if (currentFilter === 'lastMonth') {
+        const lm = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+        labelString = lm.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+      } else if (currentFilter === 'customRange') {
+        const fromV = document.getElementById('filterFrom').value;
+        const toV = document.getElementById('filterTo').value;
+        labelString = (fromV || "...") + " to " + (toV || "...");
+      }
+      document.getElementById('datePeriodRange').innerText = labelString;
+
+      workingDataset.forEach(item => {
+        // SAFETY CHECK: Skip broken or empty rows instantly
+        if (!item || !item.name || item.name === 'undefined') return;
+
+        const itemDate = new Date(item.date + 'T00:00:00');
+        let matches = true;
+
+        if (currentFilter === 'thisMonth') {
+          matches = (itemDate.getFullYear() === now.getFullYear() && itemDate.getMonth() === now.getMonth());
+        } else if (currentFilter === 'lastMonth') {
+          let lm = now.getMonth() === 0 ? 11 : now.getMonth() - 1;
+          let lmy = now.getMonth() === 0 ? now.getFullYear() - 1 : now.getFullYear();
+          matches = (itemDate.getFullYear() === lmy && itemDate.getMonth() === lm);
+        } else if (currentFilter === 'customRange') {
+          const f = document.getElementById('filterFrom').value;
+          const t = document.getElementById('filterTo').value;
+          if (f) matches = matches && (itemDate >= new Date(f + 'T00:00:00'));
+          if (t) matches = matches && (itemDate <= new Date(t + 'T00:00:00'));
+        }
+
+        if (!matches) return;
+
+        const commentString = (item.comments || "").toLowerCase();
+        const categoryString = (item.category || "").toLowerCase();
+        
+        // Smart Automation: Apply structural recurring badges strictly to Rent or Subscriptions
+        const isRecurringItem = commentString.includes('[r]') || 
+                              categoryString === 'rent' || 
+                              categoryString === 'subscriptions';
+
+        const greenCategories = ['income', 'deposit', 'cashback', 'imp'];
+        const isGreenCategory = greenCategories.includes(categoryString);
+        
+        let displayAmount = Number(item.totalamount || item.totalAmount);
+        let owedMe = Number(item.owedbyothers || item.owedByOthers || 0);
+        let myShare = Number(item.owedbyme || item.owedByMe || 0);
+        let finalColorClass = 'pink-text';
+        
+        if (isGreenCategory) {
+          finalColorClass = 'green-text';
+          inSum += displayAmount;
+        } else {
+          if (owedMe > 0) inSum += owedMe;
+          outSum += myShare > 0 ? myShare : displayAmount;
+          if (owedMe > 0 && myShare === 0) finalColorClass = 'green-text';
+        }
+
+        // Prettify clean display name for split categories
+        let displayCat = item.category;
+        if(displayCat === 'travel') displayCat = 'Travel';
+        if(displayCat === 'miscellaneous') displayCat = 'Misc';
+
+        const itemEl = document.createElement('div');
+        itemEl.className = `item ${item.isPending ? 'pending' : ''}`;
+        itemEl.innerHTML = `
+          <div class="item-left">
+            <span class="item-name">
+              ${item.name} 
+              ${isRecurringItem ? '<span class="recur-badge">SUB</span>' : ''}
+            </span>
+            <span class="item-sub">${item.date} • ${displayCat}</span>
+          </div>
+          <div class="item-right">
+            <span class="item-amount ${finalColorClass}">$${displayAmount.toFixed(2)}</span>
+            ${owedMe ? `<div class="item-sub green-text">+$${owedMe.toFixed(2)}</div>` : ''}
+          </div>
+        `;
+        container.appendChild(itemEl);
+      });
+
+      document.getElementById('totalOut').innerText = `$${outSum.toFixed(2)}`;
+      document.getElementById('totalIn').innerText = `$${inSum.toFixed(2)}`;
+      
+      if(container.innerHTML === '') {
+        container.innerHTML = '<div style="text-align:center;color:var(--text-dim);padding:24px;font-size:0.85rem;">Empty window frame.</div>';
+      }
+    }
+
+    function submitForm(e) {
+      e.preventDefault();
+      const selectedCat = document.getElementById('category').value;
+      let notes = document.getElementById('comments').value;
+      
+      // Auto-inject backend token strings strictly for Rent and Subscriptions
+      if ((selectedCat === 'rent' || selectedCat === 'subscriptions') && !notes.toLowerCase().includes('[r]')) {
+        notes = '[R] ' + notes;
+      }
+
+      const payload = {
+        id: 'local_' + Date.now(),
+        name: document.getElementById('name').value,
+        date: document.getElementById('date').value,
+        category: selectedCat,
+        paidBy: document.getElementById('paidBy').value || 'Self',
+        totalAmount: document.getElementById('totalAmount').value,
+        owedByMe: document.getElementById('owedByMe').value,
+        owedByOthers: document.getElementById('owedByOthers').value,
+        comments: notes,
+        isPending: true
+      };
+
+      document.getElementById('expenseForm').reset();
+      document.getElementById('date').value = new Date().toISOString().split('T')[0];
+      isSplitActive = false;
+      
+      toggleDrawer();
+
+      const queue = getOfflineQueue();
+      queue.unshift(payload);
+      saveOfflineQueue(queue);
+      renderUI();
+      
+      if (!isOffline) sendItemToServer(payload);
+    }
+
+    function sendItemToServer(item) {
+      google.script.run.withSuccessHandler(function() {
+        let queue = getOfflineQueue();
+        queue = queue.filter(q => q.id !== item.id);
+        saveOfflineQueue(queue);
+        loadData();
+      }).addExpense(item);
+    }
+
+    function syncOfflineQueue() {
+      const queue = getOfflineQueue();
+      if (queue.length === 0) return;
+      queue.forEach(item => sendItemToServer(item));
+    }
+
+    window.onload = loadData;
+  </script>
+</body>
+</html>
