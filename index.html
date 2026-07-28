@@ -1,12 +1,13 @@
 <!DOCTYPE html>
 <html>
 <head>
+  <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
-  <link rel="manifest" href="manifest.json">
-  <!-- The Native Free App Fix: Tells Android to treat this as a standalone system app -->
+  <!-- Standalone-app hints for Android/Chrome -->
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-capable" content="yes">
-  
+  <title>CashFlow Ledger</title>
+
   <style>
     :root {
       --bg: #121212;
@@ -19,36 +20,36 @@
       --orange: #ffb74d;
       --border: #292929;
     }
-    * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, sans-serif; }
-    body { background: var(--bg); color: var(--text); padding: 14px; padding-bottom: 20px; display: flex; flex-direction: column; min-height: 100vh;}
-    
-    /* Collapsible Entry Drawer */
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, sans-serif; -webkit-tap-highlight-color: transparent; }
+    body { background: var(--bg); color: var(--text); padding: 14px; padding-bottom: 24px; display: flex; flex-direction: column; min-height: 100vh; }
+
+    /* Collapsible drawers */
     .collapsible-drawer { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; margin-bottom: 14px; overflow: hidden; transition: max-height 0.3s cubic-bezier(0, 1, 0, 1); max-height: 52px; }
     .collapsible-drawer.expanded { max-height: 2000px; transition: max-height 0.3s ease-in-out; }
-    
     .drawer-header { padding: 14px 16px; display: flex; justify-content: space-between; align-items: center; cursor: pointer; background: rgba(255,255,255,0.02); }
-    .drawer-header h2 { font-size: 1rem; font-weight: 500; margin-bottom: 0; letter-spacing: 0.5px; }
+    .drawer-header h2 { font-size: 1rem; font-weight: 500; letter-spacing: 0.5px; }
     .plus-icon { font-size: 1.4rem; font-weight: 300; transition: transform 0.2s; color: var(--text-dim); }
     .collapsible-drawer.expanded .plus-icon { transform: rotate(45deg); color: var(--pink); }
-    
     .drawer-content { padding: 0 16px 16px 16px; display: none; }
     .collapsible-drawer.expanded .drawer-content { display: block; margin-top: 12px; }
 
-    /* Form Layouts */
+    /* Forms */
     .form-group { margin-bottom: 12px; position: relative; }
     label { display: block; font-size: 0.75rem; color: var(--text-dim); margin-bottom: 4px; }
-    input, select, textarea { 
-      width: 100%; padding: 10px; background: var(--surface-input); border: 1px solid var(--border); 
-      border-radius: 8px; color: var(--text); font-size: 0.9rem; outline: none;
-    }
-    input:focus, select:focus { border-color: var(--text-dim); }
+    input, select, textarea { width: 100%; padding: 10px; background: var(--surface-input); border: 1px solid var(--border); border-radius: 8px; color: var(--text); font-size: 0.9rem; outline: none; }
+    input:focus, select:focus, textarea:focus { border-color: var(--text-dim); }
+    input[readonly] { color: var(--text-dim); }
     .row { display: flex; gap: 10px; }
     .row .form-group { flex: 1; }
-    
-    .action-pill { background: var(--surface-input); border: 1px solid var(--border); color: var(--text-dim); padding: 4px 8px; border-radius: 6px; font-size: 0.7rem; cursor: pointer; display: inline-block; margin-top: 4px; }
+    .hint { font-size: 0.72rem; color: var(--text-dim); margin-top: 4px; }
+
+    .action-pill { background: var(--surface-input); border: 1px solid var(--border); color: var(--text-dim); padding: 5px 10px; border-radius: 6px; font-size: 0.72rem; cursor: pointer; display: inline-block; }
+    .action-pill.on { background: var(--pink); color: var(--bg); border-color: var(--pink); }
+    .pill-row { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 8px; }
     button.submit-btn { width: 100%; padding: 12px; background: var(--text); color: var(--bg); border: none; border-radius: 8px; font-weight: 600; font-size: 0.95rem; margin-top: 8px; cursor: pointer; }
-    
-    /* Summary Panel */
+    button.ghost-btn { width: 100%; padding: 10px; background: transparent; color: var(--text-dim); border: 1px solid var(--border); border-radius: 8px; font-size: 0.85rem; margin-top: 8px; cursor: pointer; }
+
+    /* Summary */
     .summary-card { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; padding: 14px; margin-bottom: 14px; }
     .summary-meta { font-size: 0.75rem; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.5px; text-align: center; margin-bottom: 8px; font-weight: 500; }
     .summary-grid { display: flex; gap: 12px; }
@@ -58,63 +59,121 @@
     .pink-text { color: var(--pink); }
     .green-text { color: var(--green); }
     .orange-text { color: var(--orange); }
+    .owed-line { text-align: center; font-size: 0.72rem; color: var(--text-dim); margin-top: 8px; }
 
-    /* Controls & Navigation Elements */
+    /* Controls */
     .section-title { font-size: 0.95rem; font-weight: 500; color: var(--text-dim); margin-bottom: 10px; text-transform: uppercase; letter-spacing: 0.5px; display: flex; justify-content: space-between; align-items: center; }
+    .search-row { display: flex; gap: 8px; margin-bottom: 12px; align-items: stretch; }
+    .search-row input { flex: 1; }
+    .sort-btn { background: var(--surface); border: 1px solid var(--border); color: var(--text-dim); border-radius: 8px; padding: 0 12px; font-size: 0.78rem; cursor: pointer; white-space: nowrap; }
     .filter-bar { display: flex; gap: 8px; margin-bottom: 12px; overflow-x: auto; white-space: nowrap; padding-bottom: 4px; }
     .filter-chip { background: var(--surface); border: 1px solid var(--border); padding: 6px 14px; border-radius: 20px; font-size: 0.8rem; color: var(--text-dim); cursor: pointer; }
     .filter-chip.active { background: var(--text); color: var(--bg); border-color: var(--text); }
-    
     #customRangePicker { display: none; margin-bottom: 12px; background: var(--surface); padding: 12px; border-radius: 10px; border: 1px solid var(--border); }
 
-    /* History Viewport Workspace */
+    /* History */
     .history-list { display: flex; flex-direction: column; gap: 8px; flex: 1; }
-    .item { background: var(--surface); padding: 12px; border-radius: 10px; border: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; }
+    .item { background: var(--surface); padding: 12px; border-radius: 10px; border: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; gap: 10px; }
     .item.pending { border-left: 3px solid var(--orange); }
-    .item-left { display: flex; flex-direction: column; gap: 2px; }
+    .item-left { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
     .item-name { font-weight: 500; font-size: 0.9rem; display: flex; align-items: center; gap: 6px; }
     .item-sub { font-size: 0.75rem; color: var(--text-dim); }
-    .item-right { text-align: right; }
+    .item-right { text-align: right; display: flex; align-items: center; gap: 10px; }
     .item-amount { font-weight: 600; font-size: 0.95rem; }
-    
-    .recur-badge { background: rgba(255,141,161,0.15); color: var(--pink); font-size: 0.65rem; padding: 1px 4px; border-radius: 4px; font-weight: bold; }
+    .del-btn { background: none; border: none; color: var(--text-dim); font-size: 1.1rem; cursor: pointer; padding: 4px; line-height: 1; opacity: 0.5; }
+    .del-btn:hover { opacity: 1; color: var(--pink); }
+    .recur-badge { background: rgba(255,141,161,0.15); color: var(--pink); font-size: 0.62rem; padding: 1px 5px; border-radius: 4px; font-weight: bold; letter-spacing: 0.5px; }
     .sync-status { font-size: 0.7rem; font-weight: normal; }
+
+    .setup-note { background: rgba(255,183,77,0.1); border: 1px solid rgba(255,183,77,0.3); color: var(--orange); border-radius: 10px; padding: 12px; font-size: 0.82rem; text-align: center; margin-bottom: 14px; line-height: 1.4; }
+
+    /* Category breakdown: donut + legend */
+    .bd-wrap { display: flex; flex-direction: column; align-items: center; gap: 12px; }
+    .donut { display: flex; justify-content: center; }
+    .legend { width: 100%; }
+    .lg-row { display: flex; align-items: center; gap: 8px; padding: 6px 0; font-size: 0.82rem; border-top: 1px solid var(--border); }
+    .lg-row:first-child { border-top: none; }
+    .lg-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+    .lg-cat { flex: 1; color: var(--text); }
+    .lg-amt { color: var(--text-dim); }
+    .lg-pct { color: var(--text-dim); width: 40px; text-align: right; }
+    .export-btn { background: var(--surface); border: 1px solid var(--border); color: var(--text-dim); border-radius: 8px; padding: 0 12px; font-size: 0.78rem; cursor: pointer; white-space: nowrap; }
   </style>
 </head>
 <body>
 
-  <!-- Aggregated Summaries Component -->
+  <!-- Summary -->
   <div class="summary-card">
-    <div class="summary-meta" id="datePeriodRange">Loading Summary Details...</div>
+    <div class="summary-meta" id="datePeriodRange">Loading…</div>
     <div class="summary-grid">
-      <div class="stat-box out"><label>Total Outflow</label><div class="stat-val pink-text" id="totalOut">$0.00</div></div>
-      <div class="stat-box in"><label>Total Inflow</label><div class="stat-val green-text" id="totalIn">$0.00</div></div>
+      <div class="stat-box out"><label>Spent</label><div class="stat-val pink-text" id="totalOut">$0.00</div></div>
+      <div class="stat-box in"><label>Received</label><div class="stat-val green-text" id="totalIn">$0.00</div></div>
+    </div>
+    <div class="owed-line" id="owedLine"></div>
+  </div>
+
+  <!-- Category breakdown (reflects the current filter + search) -->
+  <div class="summary-card" id="breakdownCard" style="display:none;">
+    <div class="summary-meta">Where it went</div>
+    <div class="bd-wrap">
+      <div id="donut" class="donut"></div>
+      <div id="legend" class="legend"></div>
     </div>
   </div>
 
-  <!-- Collapsible Form Drawer -->
+  <!-- First-run setup hint -->
+  <div class="setup-note" id="setupNote" style="display:none;">
+    Not connected yet. Open <b>Settings</b> below and paste your Google Apps Script web-app URL to sync with your own private sheet.
+  </div>
+
+  <!-- Settings drawer -->
+  <div class="collapsible-drawer" id="settingsDrawer">
+    <div class="drawer-header" onclick="toggleDrawer('settingsDrawer')">
+      <h2>⚙︎ Settings</h2>
+      <div class="plus-icon">+</div>
+    </div>
+    <div class="drawer-content">
+      <div class="form-group">
+        <label>Your name (used as default payer)</label>
+        <input type="text" id="cfgName" placeholder="e.g. Ekta">
+      </div>
+      <div class="form-group">
+        <label>Apps Script web-app URL (ends in /exec)</label>
+        <input type="text" id="cfgUrl" placeholder="https://script.google.com/…/exec">
+      </div>
+      <div class="form-group">
+        <label>Secret key (optional — must match APP_SECRET in code.gs)</label>
+        <input type="text" id="cfgSecret" placeholder="leave blank if unused">
+      </div>
+      <button class="submit-btn" onclick="saveSettings()">Save & Connect</button>
+      <p class="hint">Your settings live only on this device. Each person connects their own sheet, so no one else can see your data.</p>
+    </div>
+  </div>
+
+  <!-- Log transaction drawer -->
   <div class="collapsible-drawer" id="entryDrawer">
-    <div class="drawer-header" onclick="toggleDrawer()">
+    <div class="drawer-header" onclick="toggleDrawer('entryDrawer')">
       <h2>Log New Transaction</h2>
-      <div class="plus-icon" id="drawerPlus">+</div>
+      <div class="plus-icon">+</div>
     </div>
     <div class="drawer-content">
       <form id="expenseForm" onsubmit="submitForm(event)">
         <div class="row">
           <div class="form-group">
             <label>Name</label>
-            <input type="text" id="name" required placeholder="Target, Uber, Rent..." oninput="runAutoCategorizer(this.value)">
+            <input type="text" id="name" required placeholder="Target, Uber, Rent…" list="merchantList" autocomplete="off" oninput="onNameInput(this.value)">
+            <datalist id="merchantList"></datalist>
           </div>
           <div class="form-group">
             <label>Date</label><input type="date" id="date" required>
-            <span class="action-pill" onclick="setYesterday()">Yesterday</span>
+            <span class="action-pill" style="margin-top:4px;" onclick="setYesterday()">Yesterday</span>
           </div>
         </div>
-        
+
         <div class="row">
           <div class="form-group">
             <label>Category</label>
-            <select id="category" required>
+            <select id="category" required onchange="onCategoryChange()">
               <option value="grocery">Grocery</option>
               <option value="shopping">Shopping</option>
               <option value="subscriptions">Subscriptions</option>
@@ -132,28 +191,52 @@
           <div class="form-group"><label>Paid By</label><input type="text" id="paidBy" placeholder="Self"></div>
         </div>
 
-        <div class="row">
-          <div class="form-group">
-            <label>Total</label><input type="number" step="0.01" id="totalAmount" required placeholder="0.00" oninput="calculateSplit()">
-            <span class="action-pill" onclick="toggleSplitMode()">Split 50/50</span>
-          </div>
-          <div class="form-group"><label>Owed By Me</label><input type="number" step="0.01" id="owedByMe" placeholder="0.00"></div>
-          <div class="form-group"><label>Owed By Others</label><input type="number" step="0.01" id="owedByOthers" placeholder="0.00"></div>
+        <div class="form-group">
+          <label>Total</label>
+          <input type="number" step="0.01" inputmode="decimal" id="totalAmount" required placeholder="0.00" oninput="recomputeShare()">
         </div>
 
-        <div class="form-group"><label>Comments</label><textarea id="comments" rows="1" placeholder="Notes..."></textarea></div>
-        
+        <!-- Flexible split -->
+        <div id="splitSection">
+          <div class="pill-row">
+            <span class="action-pill" onclick="setSplit('none', this)">No split</span>
+            <span class="action-pill" onclick="setSplit('half', this)">50 / 50</span>
+            <span class="action-pill" onclick="setSplit('third', this)">Others ⅓</span>
+            <span class="action-pill" onclick="setSplit('twothird', this)">Others ⅔</span>
+            <span class="action-pill" onclick="setSplit('all', this)">Others pay all</span>
+          </div>
+          <div class="row">
+            <div class="form-group">
+              <label>Others owe (custom)</label>
+              <input type="number" step="0.01" inputmode="decimal" id="owedByOthers" placeholder="0.00" oninput="recomputeShare()">
+            </div>
+            <div class="form-group">
+              <label>Your share</label>
+              <input type="number" step="0.01" id="owedByMe" placeholder="0.00" readonly>
+            </div>
+          </div>
+          <p class="hint" id="shareHint">No split — you cover the full amount.</p>
+        </div>
+
+        <div class="form-group"><label>Comments</label><textarea id="comments" rows="1" placeholder="Notes…"></textarea></div>
+
         <button type="submit" class="submit-btn" id="submitBtn">Log Transaction</button>
       </form>
     </div>
   </div>
 
-  <!-- Primary History Section Workspace -->
+  <!-- History -->
   <div class="section-title">
-    <span>Transaction Records</span>
+    <span>Transactions <span id="txnCount" style="color:var(--text-dim); font-weight:400;"></span></span>
     <span id="syncIndicator" class="sync-status green-text">● Ready</span>
   </div>
-  
+
+  <div class="search-row">
+    <input type="text" id="searchBox" placeholder="Search name, category, notes…" oninput="renderUI()">
+    <button class="sort-btn" id="sortBtn" onclick="toggleSort()">Newest ↓</button>
+    <button class="export-btn" onclick="exportCSV()" title="Export current view to CSV">⤓ CSV</button>
+  </div>
+
   <div class="filter-bar">
     <div class="filter-chip active" onclick="setFilter('all', this)">All time</div>
     <div class="filter-chip" onclick="setFilter('thisMonth', this)">This Month</div>
@@ -166,84 +249,169 @@
     <div class="form-group"><label>To</label><input type="date" id="filterTo" onchange="renderUI()"></div>
   </div>
 
-  <div class="history-list" id="historyContainer">Loading engine records...</div>
+  <div class="history-list" id="historyContainer">Loading…</div>
 
   <script>
-    const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzI3YCus_LPuhnzncdtevVUvAsEO87JCSy890CrVhsursgsAZ3TC2JUqn7UZN6YrgFd/exec";
-    // Register Service Worker to meet Chrome's PWA install criteria
-    if ('serviceWorker' in navigator) {
-      window.addEventListener('load', () => {
-        navigator.serviceWorker.register('./sw.js')
-          .then(reg => console.log('ServiceWorker engine primed successfully:', reg.scope))
-          .catch(err => console.error('ServiceWorker setup failure:', err));
-      });
-    }
+    /* ---------- Standalone-app manifest (kept from your build) ---------- */
     (function() {
-      const manifestObj = {
-        "name": "Minimalist Expense Tracker",
-        "short_name": "Expenses",
-        "start_url": window.location.href,
-        "display": "standalone",
-        "background_color": "#121212",
-        "theme_color": "#121212"
+      const manifest = {
+        name: "CashFlow Ledger", short_name: "CFL",
+        start_url: window.location.href, display: "standalone",
+        background_color: "#121212", theme_color: "#121212"
       };
-      const manifestStr = JSON.stringify(manifestObj);
-      const blob = new Blob([manifestStr], {type: 'application/json'});
-      const manifestURL = URL.createObjectURL(blob);
-      
+      const url = URL.createObjectURL(new Blob([JSON.stringify(manifest)], { type: 'application/json' }));
       const link = document.createElement('link');
-      link.rel = 'manifest';
-      link.href = manifestURL;
+      link.rel = 'manifest'; link.href = url;
       document.head.appendChild(link);
     })();
-    
+
+    /* ---------- State ---------- */
     let serverData = [];
     let currentFilter = 'all';
+    let sortDir = 'desc';           // 'desc' = newest first (default)
     let isOffline = !navigator.onLine;
-    let isSplitActive = false;
+    let activeSplitPill = null;
+    let lastVisible = [];           // items currently shown (used by CSV export)
+    const PALETTE = ['#ff8da1','#81c784','#ffb74d','#64b5f6','#ba68c8','#4db6ac','#f06292','#a1887f','#90a4ae','#dce775'];
 
-    // Upgraded Dictionary Map including separate Travel, Misc, and Subions categories
     const categoryDictionary = {
-      'grocery': ['target', 'walmart', 'kroger', 'costco', 'safeway', 'aldi', 'whole', 'trader', 'market', 'groceries'],
-      'subscriptions': ['netflix', 'spotify', 'hulu', 'hbo', 'disney', 'youtube premium', 'apple', 'icloud', 'prime', 'chatgpt'],
-      'shopping': ['amazon', 'nike', 'adidas', 'zara', 'h&m', 'bestbuy', 'shein', 'temu', 'ebay'],
-      'dining out': ['mcdonald', 'starbucks', 'subway', 'burger', 'pizza', 'dunkin', 'taco', 'kfc', 'restaurant', 'cafe', 'bar', 'diner'],
-      'travel': ['uber', 'lyft', 'flight', 'airline', 'hotel', 'airbnb', 'gas', 'shell', 'chevron', 'train', 'metro', 'aviation'],
-      'rent': ['landlord', 'rent', 'apartment', 'housing'],
-      'income': ['salary', 'paycheck', 'stripe', 'employer', 'dividend']
+      'grocery': ['target','walmart','kroger','costco','safeway','aldi','whole','trader','market','groceries'],
+      'subscriptions': ['netflix','spotify','hulu','hbo','disney','youtube premium','apple','icloud','prime','chatgpt'],
+      'shopping': ['amazon','nike','adidas','zara','h&m','bestbuy','shein','temu','ebay'],
+      'dining out': ['mcdonald','starbucks','subway','burger','pizza','dunkin','taco','kfc','restaurant','cafe','bar','diner'],
+      'travel': ['uber','lyft','flight','airline','hotel','airbnb','gas','shell','chevron','train','metro','aviation'],
+      'rent': ['landlord','rent','apartment','housing'],
+      'income': ['salary','paycheck','stripe','employer','dividend']
     };
 
-    document.getElementById('date').value = new Date().toISOString().split('T')[0];
-    window.addEventListener('online', () => updateNetworkStatus(true));
-    window.addEventListener('offline', () => updateNetworkStatus(false));
-
-    function toggleDrawer() {
-      document.getElementById('entryDrawer').classList.toggle('expanded');
+    /* ---------- Config (per-device, stored locally) ---------- */
+    function cfg() {
+      return {
+        url: localStorage.getItem('cfg_url') || '',
+        name: localStorage.getItem('cfg_name') || '',
+        secret: localStorage.getItem('cfg_secret') || ''
+      };
+    }
+    function loadSettingsIntoForm() {
+      const c = cfg();
+      document.getElementById('cfgName').value = c.name;
+      document.getElementById('cfgUrl').value = c.url;
+      document.getElementById('cfgSecret').value = c.secret;
+    }
+    function saveSettings() {
+      localStorage.setItem('cfg_name', document.getElementById('cfgName').value.trim());
+      localStorage.setItem('cfg_url', document.getElementById('cfgUrl').value.trim());
+      localStorage.setItem('cfg_secret', document.getElementById('cfgSecret').value.trim());
+      applyDefaults();
+      document.getElementById('settingsDrawer').classList.remove('expanded');
+      loadData();
+    }
+    function applyDefaults() {
+      const c = cfg();
+      document.getElementById('paidBy').value = c.name || 'Self';
+      document.getElementById('setupNote').style.display = c.url ? 'none' : 'block';
     }
 
-    function runAutoCategorizer(value) {
-      if (!value) return;
-      const cleanInput = value.toLowerCase().trim();
-      
-      for (const [category, keywords] of Object.entries(categoryDictionary)) {
-        const found = keywords.some(keyword => cleanInput.includes(keyword));
-        if (found) {
-          document.getElementById('category').value = category;
-          break;
+    /* ---------- Network layer (fetch, not google.script.run) ---------- */
+    async function apiGet() {
+      const { url, secret } = cfg();
+      const full = url + (url.includes('?') ? '&' : '?') + 'token=' + encodeURIComponent(secret);
+      const res = await fetch(full);
+      return res.json();
+    }
+    async function apiPost(payload) {
+      const { url, secret } = cfg();
+      // No custom Content-Type header => "simple request" => no CORS preflight (which Apps Script can't answer).
+      const res = await fetch(url, { method: 'POST', body: JSON.stringify({ ...payload, token: secret }) });
+      return res.json();
+    }
+
+    /* ---------- Offline queue ---------- */
+    function getQueue() { return JSON.parse(localStorage.getItem('offlineExpenses') || '[]'); }
+    function saveQueue(q) { localStorage.setItem('offlineExpenses', JSON.stringify(q)); }
+
+    /* ---------- Load / sync ---------- */
+    async function loadData() {
+      updateNetworkStatus(navigator.onLine);
+      const cached = localStorage.getItem('serverDataCache');
+      if (cached) { serverData = JSON.parse(cached); }
+      renderUI(); // always draw (queued items show even before any server connection)
+
+      if (!cfg().url || isOffline) return;
+
+      setSync('sync');
+      try {
+        const data = await apiGet();
+        if (Array.isArray(data)) {
+          serverData = data;
+          localStorage.setItem('serverDataCache', JSON.stringify(data));
+          setSync('online');
+          syncOfflineQueue();
+          renderUI();
+        } else {
+          setSync('error'); // e.g. {success:false, error:'unauthorized'}
         }
+      } catch (e) {
+        setSync('error');
       }
     }
 
+    async function trySync(item) {
+      try {
+        const r = await apiPost({ action: 'add', ...item });
+        if (r && r.success) {
+          saveQueue(getQueue().filter(x => x.id !== item.id));
+          await refreshFromServer();
+        }
+      } catch (e) { /* leave in queue for next attempt */ }
+    }
+
+    async function refreshFromServer() {
+      try {
+        const data = await apiGet();
+        if (Array.isArray(data)) {
+          serverData = data;
+          localStorage.setItem('serverDataCache', JSON.stringify(data));
+        }
+      } catch (e) {}
+      renderUI();
+    }
+
+    function syncOfflineQueue() {
+      if (!cfg().url || isOffline) return;
+      getQueue().forEach(trySync);
+    }
+
+    /* ---------- Status indicator ---------- */
+    function setSync(state) {
+      const ind = document.getElementById('syncIndicator');
+      const map = {
+        online:  ['● Online', 'green-text'],
+        sync:    ['● Syncing…', 'orange-text'],
+        offline: ['● Offline', 'orange-text'],
+        error:   ['● Sync error', 'pink-text'],
+        ready:   ['● Ready', 'green-text']
+      };
+      const [txt, cls] = map[state] || map.ready;
+      ind.innerText = txt;
+      ind.className = 'sync-status ' + cls;
+    }
     function updateNetworkStatus(online) {
       isOffline = !online;
-      const ind = document.getElementById('syncIndicator');
-      if (online) {
-        ind.innerText = "● Online";
-        ind.className = "sync-status green-text";
-        syncOfflineQueue();
-      } else {
-        ind.innerText = "● Cached Mode";
-        ind.className = "sync-status orange-text";
+      if (!online) setSync('offline');
+      else if (cfg().url) syncOfflineQueue();
+    }
+    window.addEventListener('online', () => { updateNetworkStatus(true); loadData(); });
+    window.addEventListener('offline', () => updateNetworkStatus(false));
+
+    /* ---------- UI helpers ---------- */
+    function toggleDrawer(id) { document.getElementById(id).classList.toggle('expanded'); }
+
+    function runAutoCategorizer(value) {
+      if (!value) return;
+      const clean = value.toLowerCase().trim();
+      for (const [category, keywords] of Object.entries(categoryDictionary)) {
+        if (keywords.some(k => clean.includes(k))) { document.getElementById('category').value = category; onCategoryChange(); break; }
       }
     }
 
@@ -252,175 +420,299 @@
       document.getElementById('date').value = y.toISOString().split('T')[0];
     }
 
-    function toggleSplitMode() {
-      isSplitActive = !isSplitActive;
-      calculateSplit();
+    const GREEN_CATS = ['income','deposit','cashback','imp'];
+    function isGreen(cat) { return GREEN_CATS.includes((cat || '').toLowerCase()); }
+
+    function onCategoryChange() {
+      // Income-type categories have no split.
+      const green = isGreen(document.getElementById('category').value);
+      document.getElementById('splitSection').style.display = green ? 'none' : 'block';
+      if (green) { document.getElementById('owedByOthers').value = ''; document.getElementById('owedByMe').value = ''; }
     }
 
-    function calculateSplit() {
+    /* ---------- Flexible split ---------- */
+    function setSplit(mode, el) {
+      document.querySelectorAll('#splitSection .action-pill').forEach(p => p.classList.remove('on'));
+      if (el) el.classList.add('on');
       const total = parseFloat(document.getElementById('totalAmount').value) || 0;
-      if (isSplitActive && total > 0) {
-        const half = (total / 2).toFixed(2);
-        document.getElementById('owedByMe').value = half;
-        document.getElementById('owedByOthers').value = half;
-      } else if (!isSplitActive) {
-        document.getElementById('owedByMe').value = '';
-        document.getElementById('owedByOthers').value = '';
-      }
+      let others = 0;
+      if (mode === 'half') others = total / 2;
+      else if (mode === 'third') others = total / 3;
+      else if (mode === 'twothird') others = total * 2 / 3;
+      else if (mode === 'all') others = total;
+      else others = 0; // none
+      document.getElementById('owedByOthers').value = others ? others.toFixed(2) : '';
+      recomputeShare();
     }
 
-    function getOfflineQueue() { return JSON.parse(localStorage.getItem('offlineExpenses') || '[]'); }
-    function saveOfflineQueue(q) { localStorage.setItem('offlineExpenses', JSON.stringify(q)); }
-
-    function loadData() {
-      updateNetworkStatus(navigator.onLine);
-      const cached = localStorage.getItem('serverDataCache');
-      if (cached) { serverData = JSON.parse(cached); renderUI(); }
-      
-      if (!isOffline) {
-        fetch(SCRIPT_URL)
-          .then(res => res.json())
-          .then(data => {
-            serverData = data;
-            localStorage.setItem('serverDataCache', JSON.stringify(data));
-            renderUI();
-          })
-          .catch(err => console.error("Fetch error:", err));
-      }
-    }
-    
-    function sendItemToServer(item) {
-      fetch(SCRIPT_URL, {
-        method: 'POST',
-        mode: 'no-cors', // Essential bypass rule for handling direct Apps Script redirects
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(item)
-      })
-      .then(() => {
-        let queue = getOfflineQueue();
-        queue = queue.filter(q => q.id !== item.id);
-        saveOfflineQueue(queue);
-        // Give Google Sheets 1.5 seconds to settle the row operation before drawing updates
-        setTimeout(loadData, 1500); 
-      })
-      .catch(err => console.error("Server sync error:", err));
+    function recomputeShare() {
+      const total = parseFloat(document.getElementById('totalAmount').value) || 0;
+      const others = Math.min(parseFloat(document.getElementById('owedByOthers').value) || 0, total);
+      const me = Math.max(0, total - others);
+      document.getElementById('owedByMe').value = others > 0 ? me.toFixed(2) : '';
+      document.getElementById('shareHint').innerText = others > 0
+        ? `Your share $${me.toFixed(2)}  •  Others owe you $${others.toFixed(2)}`
+        : 'No split — you cover the full amount.';
     }
 
-    function setFilter(filterType, el) {
+    /* ---------- Filter / sort ---------- */
+    function setFilter(type, el) {
       document.querySelectorAll('.filter-chip').forEach(c => c.classList.remove('active'));
       el.classList.add('active');
-      currentFilter = filterType;
-      document.getElementById('customRangePicker').style.display = (filterType === 'customRange') ? 'flex' : 'none';
+      currentFilter = type;
+      document.getElementById('customRangePicker').style.display = (type === 'customRange') ? 'flex' : 'none';
+      renderUI();
+    }
+    function toggleSort() {
+      sortDir = (sortDir === 'desc') ? 'asc' : 'desc';
+      document.getElementById('sortBtn').innerText = sortDir === 'desc' ? 'Newest ↓' : 'Oldest ↑';
       renderUI();
     }
 
+    /* ---------- Delete ---------- */
+    async function deleteItem(id, isPending) {
+      if (!confirm('Delete this transaction?')) return;
+      if (isPending) {
+        saveQueue(getQueue().filter(x => x.id !== id));
+        renderUI();
+        return;
+      }
+      try {
+        setSync('sync');
+        await apiPost({ action: 'delete', id });
+        await refreshFromServer();
+        setSync('online');
+      } catch (e) { setSync('error'); }
+    }
+
+    /* ---------- Render ---------- */
     function renderUI() {
       const container = document.getElementById('historyContainer');
       container.innerHTML = '';
-      let outSum = 0; let inSum = 0;
+      let outSum = 0, inSum = 0, owedToMeSum = 0;
+      const catTotals = {};
+      const visible = [];
       const now = new Date();
-      
-      const unSyncedItems = getOfflineQueue();
-      const workingDataset = [...unSyncedItems, ...serverData];
+      const search = (document.getElementById('searchBox').value || '').toLowerCase().trim();
 
-      let labelString = "All Historical Data";
-      if (currentFilter === 'thisMonth') {
-        labelString = now.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
-      } else if (currentFilter === 'lastMonth') {
-        const lm = new Date(now.getFullYear(), now.getMonth() - 1, 1);
-        labelString = lm.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
-      } else if (currentFilter === 'customRange') {
-        const fromV = document.getElementById('filterFrom').value;
-        const toV = document.getElementById('filterTo').value;
-        labelString = (fromV || "...") + " to " + (toV || "...");
-      }
+      // Merge queue + server, de-duplicated by id (prevents the brief double-show while syncing).
+      const seen = new Set();
+      let dataset = [];
+      [...getQueue(), ...serverData].forEach(it => {
+        if (!it || !it.name || it.name === 'undefined') return;
+        const key = it.id || (it.name + it.date + it.totalAmount);
+        if (seen.has(key)) return;
+        seen.add(key);
+        dataset.push(it);
+      });
+
+      // Period label
+      let labelString = "All time";
+      if (currentFilter === 'thisMonth') labelString = now.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+      else if (currentFilter === 'lastMonth') labelString = new Date(now.getFullYear(), now.getMonth() - 1, 1).toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+      else if (currentFilter === 'customRange') labelString = (document.getElementById('filterFrom').value || '…') + ' → ' + (document.getElementById('filterTo').value || '…');
       document.getElementById('datePeriodRange').innerText = labelString;
 
-      workingDataset.forEach(item => {
-        // SAFETY CHECK: Skip broken or empty rows instantly
-        if (!item || !item.name || item.name === 'undefined') return;
+      // Sort by date (newest/oldest)
+      dataset.sort((a, b) => {
+        const d = new Date(b.date) - new Date(a.date);
+        return sortDir === 'desc' ? d : -d;
+      });
 
+      dataset.forEach(item => {
         const itemDate = new Date(item.date + 'T00:00:00');
-        let matches = true;
 
+        // Date filter
+        let matches = true;
         if (currentFilter === 'thisMonth') {
           matches = (itemDate.getFullYear() === now.getFullYear() && itemDate.getMonth() === now.getMonth());
         } else if (currentFilter === 'lastMonth') {
-          let lm = now.getMonth() === 0 ? 11 : now.getMonth() - 1;
-          let lmy = now.getMonth() === 0 ? now.getFullYear() - 1 : now.getFullYear();
+          const lm = now.getMonth() === 0 ? 11 : now.getMonth() - 1;
+          const lmy = now.getMonth() === 0 ? now.getFullYear() - 1 : now.getFullYear();
           matches = (itemDate.getFullYear() === lmy && itemDate.getMonth() === lm);
         } else if (currentFilter === 'customRange') {
-          const f = document.getElementById('filterFrom').value;
-          const t = document.getElementById('filterTo').value;
+          const f = document.getElementById('filterFrom').value, t = document.getElementById('filterTo').value;
           if (f) matches = matches && (itemDate >= new Date(f + 'T00:00:00'));
           if (t) matches = matches && (itemDate <= new Date(t + 'T00:00:00'));
         }
-
         if (!matches) return;
 
-        const commentString = (item.comments || "").toLowerCase();
-        const categoryString = (item.category || "").toLowerCase();
-        
-        // Smart Automation: Apply structural recurring badges strictly to Rent or Subscriptions
-        const isRecurringItem = commentString.includes('[r]') || 
-                              categoryString === 'rent' || 
-                              categoryString === 'subscriptions';
-
-        const greenCategories = ['income', 'deposit', 'cashback', 'imp'];
-        const isGreenCategory = greenCategories.includes(categoryString);
-        
-        let displayAmount = Number(item.totalamount || item.totalAmount);
-        let owedMe = Number(item.owedbyothers || item.owedByOthers || 0);
-        let myShare = Number(item.owedbyme || item.owedByMe || 0);
-        let finalColorClass = 'pink-text';
-        
-        if (isGreenCategory) {
-          finalColorClass = 'green-text';
-          inSum += displayAmount;
-        } else {
-          if (owedMe > 0) inSum += owedMe;
-          outSum += myShare > 0 ? myShare : displayAmount;
-          if (owedMe > 0 && myShare === 0) finalColorClass = 'green-text';
+        // Search filter
+        if (search) {
+          const hay = `${item.name} ${item.category} ${item.comments || ''}`.toLowerCase();
+          if (!hay.includes(search)) return;
         }
 
-        // Prettify clean display name for split categories
-        let displayCat = item.category;
-        if(displayCat === 'travel') displayCat = 'Travel';
-        if(displayCat === 'miscellaneous') displayCat = 'Misc';
+        const category = (item.category || '').toLowerCase();
+        const comment = (item.comments || '').toLowerCase();
+        const recurring = comment.includes('[r]') || category === 'rent' || category === 'subscriptions';
 
-        const itemEl = document.createElement('div');
-        itemEl.className = `item ${item.isPending ? 'pending' : ''}`;
-        itemEl.innerHTML = `
+        const total = Number(item.totalamount ?? item.totalAmount) || 0;
+        const others = Number(item.owedbyothers ?? item.owedByOthers) || 0;
+        const myShare = Number(item.owedbyme ?? item.owedByMe) || 0;
+
+        let colorClass = 'pink-text';
+        if (isGreen(category)) {
+          colorClass = 'green-text';
+          inSum += total;
+        } else {
+          // Your real cost = your share if the bill was split, else the full total.
+          const cost = (others > 0 ? myShare : total);
+          outSum += cost;
+          catTotals[category] = (catTotals[category] || 0) + cost;
+          if (others > 0) owedToMeSum += others; // receivable, shown separately (not counted as income)
+        }
+
+        let displayCat = item.category;
+        if (displayCat === 'travel') displayCat = 'Travel';
+        if (displayCat === 'miscellaneous') displayCat = 'Misc';
+
+        visible.push(item);
+        const el = document.createElement('div');
+        el.className = `item ${item.isPending ? 'pending' : ''}`;
+        el.innerHTML = `
           <div class="item-left">
-            <span class="item-name">
-              ${item.name} 
-              ${isRecurringItem ? '<span class="recur-badge">SUB</span>' : ''}
-            </span>
-            <span class="item-sub">${item.date} • ${displayCat}</span>
+            <span class="item-name">${item.name} ${recurring ? '<span class="recur-badge">RECUR</span>' : ''}</span>
+            <span class="item-sub">${relDate(item.date)} • ${displayCat}${item.paidBy && item.paidBy !== 'Self' ? ' • ' + item.paidBy : ''}</span>
           </div>
           <div class="item-right">
-            <span class="item-amount ${finalColorClass}">$${displayAmount.toFixed(2)}</span>
-            ${owedMe ? `<div class="item-sub green-text">+$${owedMe.toFixed(2)}</div>` : ''}
-          </div>
-        `;
-        container.appendChild(itemEl);
+            <div>
+              <span class="item-amount ${colorClass}">$${total.toFixed(2)}</span>
+              ${others ? `<div class="item-sub green-text">+$${others.toFixed(2)}</div>` : ''}
+            </div>
+            <button class="del-btn" title="Delete">✕</button>
+          </div>`;
+        el.querySelector('.del-btn').onclick = () => deleteItem(item.id, !!item.isPending);
+        container.appendChild(el);
       });
 
       document.getElementById('totalOut').innerText = `$${outSum.toFixed(2)}`;
       document.getElementById('totalIn').innerText = `$${inSum.toFixed(2)}`;
-      
-      if(container.innerHTML === '') {
-        container.innerHTML = '<div style="text-align:center;color:var(--text-dim);padding:24px;font-size:0.85rem;">Empty window frame.</div>';
+      document.getElementById('owedLine').innerText = owedToMeSum > 0 ? `Others owe you $${owedToMeSum.toFixed(2)}` : '';
+
+      renderBreakdown(catTotals);
+      updateMerchantList(dataset);
+      lastVisible = visible;
+      document.getElementById('txnCount').innerText = visible.length ? '· ' + visible.length : '';
+
+      if (!container.innerHTML) {
+        container.innerHTML = '<div style="text-align:center;color:var(--text-dim);padding:24px;font-size:0.85rem;">No transactions here yet.</div>';
       }
     }
 
+    /* ---------- Merchant autocomplete + breakdown ---------- */
+    function allHistory() {
+      return [...getQueue(), ...serverData].filter(it => it && it.name);
+    }
+
+    // Suggest as you type; if this exact merchant was logged before, reuse its category.
+    function onNameInput(value) {
+      runAutoCategorizer(value);
+      const v = (value || '').trim().toLowerCase();
+      if (!v) return;
+      const match = allHistory().find(it => (it.name || '').trim().toLowerCase() === v);
+      if (match && match.category) {
+        const sel = document.getElementById('category');
+        const opt = [...sel.options].find(o => o.value.toLowerCase() === String(match.category).toLowerCase());
+        if (opt) { sel.value = opt.value; onCategoryChange(); }
+      }
+    }
+
+    function updateMerchantList(dataset) {
+      const names = [], seen = new Set();
+      dataset.forEach(it => {
+        const n = (it.name || '').trim(), key = n.toLowerCase();
+        if (n && !seen.has(key)) { seen.add(key); names.push(n); }
+      });
+      document.getElementById('merchantList').innerHTML =
+        names.slice(0, 50).map(n => `<option value="${n.replace(/"/g, '&quot;')}">`).join('');
+    }
+
+    function prettyCat(cat) {
+      const c = (cat || '').toLowerCase();
+      if (c === 'imp') return 'IMP';
+      if (c === 'miscellaneous') return 'Misc';
+      return c.replace(/\b\w/g, m => m.toUpperCase());
+    }
+
+    function renderBreakdown(catTotals) {
+      const card = document.getElementById('breakdownCard');
+      const donut = document.getElementById('donut');
+      const legend = document.getElementById('legend');
+      const entries = Object.entries(catTotals).filter(([, v]) => v > 0).sort((a, b) => b[1] - a[1]);
+      if (!entries.length) { card.style.display = 'none'; return; }
+      card.style.display = 'block';
+
+      const total = entries.reduce((s, [, v]) => s + v, 0);
+      const R = 54, C = 2 * Math.PI * R; // radius + circumference
+      let offset = 0;
+      const rows = entries.map(([cat, val], i) => {
+        const f = val / total;
+        const color = PALETTE[i % PALETTE.length];
+        const seg = `<circle cx="70" cy="70" r="${R}" fill="none" stroke="${color}" stroke-width="18"
+          stroke-dasharray="${(f * C).toFixed(2)} ${(C - f * C).toFixed(2)}"
+          stroke-dashoffset="${(-offset * C).toFixed(2)}" transform="rotate(-90 70 70)"></circle>`;
+        offset += f;
+        return { seg, cat, val, color, f };
+      });
+
+      donut.innerHTML = `<svg viewBox="0 0 140 140" width="132" height="132">
+        ${rows.map(r => r.seg).join('')}
+        <text x="70" y="66" text-anchor="middle" fill="var(--text-dim)" font-size="9">Spent</text>
+        <text x="70" y="83" text-anchor="middle" fill="var(--text)" font-size="15" font-weight="600">$${total.toFixed(0)}</text>
+      </svg>`;
+
+      legend.innerHTML = rows.map(r => `
+        <div class="lg-row">
+          <span class="lg-dot" style="background:${r.color}"></span>
+          <span class="lg-cat">${prettyCat(r.cat)}</span>
+          <span class="lg-amt">$${r.val.toFixed(2)}</span>
+          <span class="lg-pct">${Math.round(r.f * 100)}%</span>
+        </div>`).join('');
+    }
+
+    // "Today" / "Yesterday" for recent items, otherwise the plain date.
+    function relDate(d) {
+      const today = new Date(); today.setHours(0, 0, 0, 0);
+      const dt = new Date(d + 'T00:00:00');
+      const diff = Math.round((today - dt) / 86400000);
+      if (diff === 0) return 'Today';
+      if (diff === 1) return 'Yesterday';
+      return d;
+    }
+
+    /* ---------- CSV export (browser-only, no server) ---------- */
+    function exportCSV() {
+      if (!lastVisible.length) { alert('Nothing to export in this view.'); return; }
+      const headers = ['Date', 'Name', 'Category', 'PaidBy', 'Total', 'YourShare', 'OthersOwe', 'Comments'];
+      const esc = v => `"${String(v == null ? '' : v).replace(/"/g, '""')}"`;
+      const lines = lastVisible.map(it => {
+        const total = Number(it.totalamount ?? it.totalAmount) || 0;
+        const others = Number(it.owedbyothers ?? it.owedByOthers) || 0;
+        const myShare = Number(it.owedbyme ?? it.owedByMe) || 0;
+        const yourShare = others > 0 ? myShare : total;
+        return [it.date, it.name, it.category, it.paidBy || '', total.toFixed(2),
+                yourShare.toFixed(2), others.toFixed(2), (it.comments || '').replace(/\[R\]\s*/i, '')]
+               .map(esc).join(',');
+      });
+      const csv = headers.join(',') + '\r\n' + lines.join('\r\n');
+      const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `cashflow-ledger-${new Date().toISOString().split('T')[0]}.csv`;
+      document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+    }
+
+    /* ---------- Submit ---------- */
     function submitForm(e) {
       e.preventDefault();
-      const selectedCat = document.getElementById('category').value;
+      const cat = document.getElementById('category').value;
       let notes = document.getElementById('comments').value;
-      
-      // Auto-inject backend token strings strictly for Rent and Subscriptions
-      if ((selectedCat === 'rent' || selectedCat === 'subscriptions') && !notes.toLowerCase().includes('[r]')) {
+
+      // Tag recurring items so the badge/logic survives round-trips through the sheet.
+      if ((cat === 'rent' || cat === 'subscriptions') && !notes.toLowerCase().includes('[r]')) {
         notes = '[R] ' + notes;
       }
 
@@ -428,42 +720,40 @@
         id: 'local_' + Date.now(),
         name: document.getElementById('name').value,
         date: document.getElementById('date').value,
-        category: selectedCat,
-        paidBy: document.getElementById('paidBy').value || 'Self',
+        category: cat,
+        paidBy: document.getElementById('paidBy').value || cfg().name || 'Self',
         totalAmount: document.getElementById('totalAmount').value,
-        owedByMe: document.getElementById('owedByMe').value,
-        owedByOthers: document.getElementById('owedByOthers').value,
+        owedByMe: document.getElementById('owedByMe').value || 0,
+        owedByOthers: document.getElementById('owedByOthers').value || 0,
         comments: notes,
         isPending: true
       };
 
+      // Reset form
       document.getElementById('expenseForm').reset();
       document.getElementById('date').value = new Date().toISOString().split('T')[0];
-      isSplitActive = false;
-      
-      toggleDrawer();
+      applyDefaults();
+      onCategoryChange();
+      document.getElementById('shareHint').innerText = 'No split — you cover the full amount.';
+      activeSplitPill = null;
+      toggleDrawer('entryDrawer');
 
-      const queue = getOfflineQueue();
-      queue.unshift(payload);
-      saveOfflineQueue(queue);
+      // Queue immediately (instant UI), then push to server.
+      const q = getQueue(); q.unshift(payload); saveQueue(q);
       renderUI();
-      
-      if (!isOffline) sendItemToServer(payload);
+      if (!isOffline && cfg().url) trySync(payload);
     }
 
-    function sendItemToServer(item) {
-      google.script.run.withSuccessHandler(function() {
-        let queue = getOfflineQueue();
-        queue = queue.filter(q => q.id !== item.id);
-        saveOfflineQueue(queue);
-        loadData();
-      }).addExpense(item);
-    }
+    /* ---------- Boot ---------- */
+    document.getElementById('date').value = new Date().toISOString().split('T')[0];
+    loadSettingsIntoForm();
+    applyDefaults();
+    onCategoryChange();
+    if (!cfg().url) document.getElementById('settingsDrawer').classList.add('expanded');
 
-    function syncOfflineQueue() {
-      const queue = getOfflineQueue();
-      if (queue.length === 0) return;
-      queue.forEach(item => sendItemToServer(item));
+    // Register service worker (relative path works whether the repo is /CFR/ or /CFL/).
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => navigator.serviceWorker.register('sw.js').catch(() => {}));
     }
 
     window.onload = loadData;
